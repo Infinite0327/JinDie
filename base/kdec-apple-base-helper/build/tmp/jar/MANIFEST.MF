@@ -1,0 +1,16 @@
+Manifest-Version: 1.0
+Jar-Id: 
+Project-Name: kdec-apple-base-helper
+Build-Tool: Gradle 7.6.3
+Build-Date: 2026-05-19 14:48:17
+Built-By: Kingdee Cosmic Developer Tools
+Build-Num: 20260519144817398
+App-Name: 
+Git-Branch: 
+Cloud-Name: 
+Group-Name: kdec.cosmic
+Bundle-Version: 1.0.0
+Git-Commit-Hash: 
+Build-Image: 
+Build-Jdk: 1.8.0_482
+
