@@ -1,6 +1,8 @@
 package kdec.apple.cloud.app.business.service.impl;
 
 import kdec.apple.cloud.app.business.service.AiService;
+import kdec.apple.cloud.app.common.entity.ExerciseItem;
+import kdec.apple.cloud.app.common.enums.ExerciseType;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -10,10 +12,17 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class AiServiceImpl implements AiService {
     private static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
     private static final String DEFAULT_MODEL = "gpt-4o-mini";
+    private static final ConcurrentMap<Long, String> TASK_RESULT_CACHE = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<Long, List<ExerciseItem>> EXERCISE_PREVIEW_CACHE = new ConcurrentHashMap<>();
 
     @Override
     public String generateChapterMindMap(Long chapterId, String chapterTitle, String chapterContent) {
@@ -45,6 +54,75 @@ public class AiServiceImpl implements AiService {
                 + "Chapter title: " + safeText(chapterTitle) + "\n"
                 + "Chapter content:\n" + chapterContent;
 
+        return stripCodeFence(callAi(prompt));
+    }
+
+    @Override
+    public void generateGraphAsync(Long taskId, String fileUrl, Long materialId) {
+        String prompt = "Generate a knowledge graph for this material URL: " + safeText(fileUrl) + ". "
+                + "Output Chinese content. Output only JSON with materialId, nodes[{id,name}], edges[{sourceId,targetId}]. "
+                + "materialId=" + valueOf(materialId);
+        cacheTaskResult(taskId, stripCodeFence(callAi(prompt)));
+    }
+
+    @Override
+    public void generateNoteAsync(Long taskId, String fileUrl, Long materialId) {
+        String prompt = "Generate concise Chinese study notes in markdown for this material URL: "
+                + safeText(fileUrl) + ". materialId=" + valueOf(materialId);
+        cacheTaskResult(taskId, callAi(prompt));
+    }
+
+    @Override
+    public void parseAudioAsync(Long taskId, String fileUrl, Long materialId) {
+        String prompt = "Parse this audio material URL and output Chinese JSON with transcript, segments, and keywords: "
+                + safeText(fileUrl) + ". materialId=" + valueOf(materialId);
+        cacheTaskResult(taskId, stripCodeFence(callAi(prompt)));
+    }
+
+    @Override
+    public void parseVideoAsync(Long taskId, String fileUrl, Long materialId) {
+        String prompt = "Parse this video material URL and output Chinese JSON with transcript, chapters, keywords, and duration: "
+                + safeText(fileUrl) + ". materialId=" + valueOf(materialId);
+        cacheTaskResult(taskId, stripCodeFence(callAi(prompt)));
+    }
+
+    @Override
+    public void parseExerciseAsync(Long taskId, String fileUrl, Long batchId) {
+        String prompt = "Parse or generate exercises from this exercise file URL: " + safeText(fileUrl) + ". "
+                + "Output Chinese content. Output only a JSON array. "
+                + "Each item must contain type, content, options, answer, explanation, knowledgeTags. "
+                + "Allowed types: SINGLE_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, FILL_BLANK, SHORT_ANSWER. "
+                + "batchId=" + valueOf(batchId);
+        String result = stripCodeFence(callAi(prompt));
+        cacheTaskResult(taskId, result);
+        if (taskId != null) {
+            EXERCISE_PREVIEW_CACHE.put(taskId, toExercisePreview(batchId, result));
+        }
+    }
+
+    @Override
+    public List<ExerciseItem> getExercisePreview(Long taskId) {
+        List<ExerciseItem> items = EXERCISE_PREVIEW_CACHE.get(taskId);
+        return items == null ? Collections.emptyList() : items;
+    }
+
+    @Override
+    public String getAnswerPreview(Long taskId) {
+        String result = TASK_RESULT_CACHE.get(taskId);
+        return result == null ? "" : result;
+    }
+
+    @Override
+    public void gradeAsync(Long taskId, Long exerciseId) {
+        String prompt = "Grade exercise " + valueOf(exerciseId)
+                + ". Output Chinese JSON with score, correct, correctAnswer, explanation, and aiFeedback.";
+        cacheTaskResult(taskId, stripCodeFence(callAi(prompt)));
+    }
+
+    @Override
+    public String getClassReport(Long exerciseId) {
+        String prompt = "Generate a Chinese class exercise report for exercise " + valueOf(exerciseId)
+                + ". Output JSON with submittedCount, notSubmittedCount, avgScore, avgAccuracy, weakKnowledgeTags, and suggestions.";
         return stripCodeFence(callAi(prompt));
     }
 
@@ -212,6 +290,27 @@ public class AiServiceImpl implements AiService {
             return trimmed.substring(firstLineEnd + 1, lastFence).trim();
         }
         return trimmed;
+    }
+
+    private List<ExerciseItem> toExercisePreview(Long batchId, String aiJson) {
+        List<ExerciseItem> result = new ArrayList<>();
+        ExerciseItem item = new ExerciseItem();
+        item.setId(System.currentTimeMillis());
+        item.setBatchId(batchId);
+        item.setType(ExerciseType.SHORT_ANSWER);
+        item.setContent("AI generated exercise preview. Use rawJson to import detailed items.");
+        item.setOptions("[]");
+        item.setAnswer("[]");
+        item.setExplanation("The raw AI result is cached by taskId.");
+        item.setKnowledgeTags("[\"AI_PARSE\"]");
+        result.add(item);
+        return result;
+    }
+
+    private void cacheTaskResult(Long taskId, String result) {
+        if (taskId != null) {
+            TASK_RESULT_CACHE.put(taskId, result == null ? "" : result);
+        }
     }
 
     private void requireText(String text, String name) {
