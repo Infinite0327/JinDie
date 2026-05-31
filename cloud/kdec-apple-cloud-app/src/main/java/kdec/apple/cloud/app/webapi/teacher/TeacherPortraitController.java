@@ -3,10 +3,12 @@ package kdec.apple.cloud.app.webapi.teacher;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import kd.bos.workflow.engine.TaskService;
 import kdec.apple.base.common.result.Result;
 import kdec.apple.cloud.app.business.service.teacher.TeacherPortraitService;
 import kdec.apple.cloud.app.common.dto.utils.TaskCreatedVO;
 import kdec.apple.cloud.app.common.dto.portrait.*;
+import kdec.apple.cloud.app.common.dto.utils.TaskStatusVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 //TODO:做这个。
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class TeacherPortraitController {
 
     private final TeacherPortraitService portraitService;
+    private final TaskService taskService;
 
     // ========================================================
     //  一、学生个人画像
@@ -124,10 +127,10 @@ public class TeacherPortraitController {
      */
     @ApiOperation("轮询教学建议生成状态")
     @GetMapping("/portrait/teaching-suggestion/tasks/{taskId}/status")
-    public Result<TeachingSuggestionStatusVO> getTeachingSuggestionStatus(
+    public Result<TaskStatusVO> getTeachingSuggestionStatus(
             @PathVariable Long classId,
             @PathVariable Long taskId) {
-        return Result.ok(portraitService.getTeachingSuggestionStatus(taskId));
+        return Result.ok(taskService.getTaskStatus(taskId));
     }
 
     /**
