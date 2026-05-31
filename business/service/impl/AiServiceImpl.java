@@ -126,6 +126,14 @@ public class AiServiceImpl implements AiService {
         return stripCodeFence(callAi(prompt));
     }
 
+    @Override
+    public String generateTeachingSuggestion(Long classId, String portraitSummary) {
+        String prompt = "Generate concise Chinese teaching suggestions in markdown for class " + valueOf(classId) + ". "
+                + "Include priority knowledge points, teaching actions, and students who may need attention. "
+                + "Use the following portrait statistics:\n" + safeText(portraitSummary);
+        return callAi(prompt);
+    }
+
     private String callAi(String userPrompt) {
         String apiKey = firstNotBlank(System.getProperty("AI_API_KEY"), System.getenv("AI_API_KEY"));
         if (isBlank(apiKey)) {

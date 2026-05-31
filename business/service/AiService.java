@@ -26,4 +26,6 @@ public interface AiService {
     void gradeAsync(Long taskId, Long exerciseId);
 
     String getClassReport(Long exerciseId);
+
+    String generateTeachingSuggestion(Long classId, String portraitSummary);
 }
