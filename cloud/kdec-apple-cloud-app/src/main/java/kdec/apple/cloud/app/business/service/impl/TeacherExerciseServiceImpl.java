@@ -244,6 +244,21 @@ public class TeacherExerciseServiceImpl implements TeacherExerciseService {
                 .build();
         answerBatchMapper.insert(answerBatch);
 
+        Task task = Task.builder()
+                .taskType(TaskType.ANSWER_PARSE)
+                .status(ParseStatus.PENDING)
+                .bizId(answerBatch.getId())
+                .createTime(LocalDateTime.now())
+                .updateTime(LocalDateTime.now())
+                .build();
+        taskMapper.insert(task);
+        aiService.parseAnswerAsync(task.getTaskId(), ossUrl, answerBatch.getId());
+
+        TaskCreatedVO vo = new TaskCreatedVO();
+        vo.setTaskId(task.getTaskId());
+        vo.setTaskType(TaskType.ANSWER_PARSE);
+        vo.setBizId(answerBatch.getId());
+        return vo;
     }
 
     @Override

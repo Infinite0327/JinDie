@@ -4,7 +4,6 @@ import lombok.Data;
 
 @Data
 public class Result<T> {
-
     private int code;
     private String message;
     private T data;
@@ -27,17 +26,16 @@ public class Result<T> {
         return new Result<>(code, message, null);
     }
 
-    // 常用错误码快捷方法
     public static <T> Result<T> badRequest(String message) {
         return fail(40001, message);
     }
 
     public static <T> Result<T> unauthorized() {
-        return fail(40101, "未登录或 token 已过期");
+        return fail(40101, "Login required or token expired");
     }
 
     public static <T> Result<T> forbidden() {
-        return fail(40301, "无权限");
+        return fail(40301, "Forbidden");
     }
 
     public static <T> Result<T> notFound(String message) {
